@@ -143,6 +143,16 @@ func (c *Configuration) SetFilePath(filePath string) {
 	c.filePath = filePath
 }
 
+// StringValue returns the string value for the specified section and option.
+func (c *Configuration) StringValue(section, option string) (value string, err error) {
+	s, err := c.Section(section)
+	if err != nil {
+		return
+	}
+	value = s.ValueOf(option)
+	return
+}
+
 // DeleteSection deletes the specified sections matched by a regex name and returns the deleted sections.
 func (c *Configuration) Delete(regex string) (sections []*Section, err error) {
 	sections, err = c.Find(regex)
