@@ -384,9 +384,7 @@ func parseOption(option string) (opt, value string) {
 
 func (c *Configuration) addSection(fqn string) *Section {
 
-	section := new(Section)
-	section.fqn = fqn
-	section.options = make(map[string]string)
+	section := &Section{fqn: fqn, options: make(map[string]string)}
 
 	var lst *list.List
 	if lst = c.sections[fqn]; lst == nil {
