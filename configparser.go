@@ -47,6 +47,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 // Configuration represents a configuration file with its sections and options.
@@ -54,6 +55,7 @@ type Configuration struct {
 	filePath        string                // configuration file
 	sections        map[string]*list.List // fully qualified section name as key
 	orderedSections []string              // track the order of section names as they are parsed
+	mutex           sync.RWMutex
 }
 
 // A Section in a configuration
@@ -61,6 +63,7 @@ type Section struct {
 	fqn            string
 	options        map[string]string
 	orderedOptions []string // track the order of the options as they are parsed
+	mutex          sync.RWMutex
 }
 
 // NewConfiguration returns a new Configuration instance with an empty file path.
@@ -104,6 +107,8 @@ func Read(filePath string) (*Configuration, error) {
 
 // Save the Configuration to file. Creates a backup (.bak) if file already exists.
 func Save(c *Configuration, filePath string) (err error) {
+	c.mutex.Lock()
+
 	err = os.Rename(filePath, filePath+".bak")
 	if err != nil {
 		if !os.IsNotExist(err) { // fine if the file does not exists
@@ -124,11 +129,15 @@ func Save(c *Configuration, filePath string) (err error) {
 	defer func() {
 		err = w.Flush()
 	}()
+	c.mutex.Unlock()
 
 	s, err := c.AllSections()
 	if err != nil {
 		return err
 	}
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
 	for _, v := range s {
 		w.WriteString(v.String())
@@ -150,6 +159,9 @@ func (c *Configuration) FilePath() string {
 
 // SetFilePath sets the Configuration file path.
 func (c *Configuration) SetFilePath(filePath string) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	c.filePath = filePath
 }
 
@@ -166,6 +178,9 @@ func (c *Configuration) StringValue(section, option string) (value string, err e
 // DeleteSection deletes the specified sections matched by a regex name and returns the deleted sections.
 func (c *Configuration) Delete(regex string) (sections []*Section, err error) {
 	sections, err = c.Find(regex)
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	if err == nil {
 		for _, s := range sections {
 			delete(c.sections, s.fqn)
@@ -187,6 +202,9 @@ func (c *Configuration) Delete(regex string) (sections []*Section, err error) {
 
 // Section returns the first section matching the fully qualified section name.
 func (c *Configuration) Section(fqn string) (*Section, error) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
 	if l, ok := c.sections[fqn]; ok {
 		for e := l.Front(); e != nil; e = e.Next() {
 			s := e.Value.(*Section)
@@ -203,6 +221,9 @@ func (c *Configuration) AllSections() ([]*Section, error) {
 
 // Sections returns a slice of Sections matching the fully qualified section name.
 func (c *Configuration) Sections(fqn string) ([]*Section, error) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
 	var sections []*Section
 
 	f := func(lst *list.List) {
@@ -232,6 +253,9 @@ func (c *Configuration) Sections(fqn string) ([]*Section, error) {
 
 // Find returns a slice of Sections matching the regexp against the section name.
 func (c *Configuration) Find(regex string) ([]*Section, error) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
 	var sections []*Section
 	for key, lst := range c.sections {
 		if matched, err := regexp.MatchString(regex, key); matched {
@@ -250,6 +274,9 @@ func (c *Configuration) Find(regex string) ([]*Section, error) {
 
 // PrintSection prints a text representation of all sections matching the fully qualified section name.
 func (c *Configuration) PrintSection(fqn string) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
 	sections, err := c.Sections(fqn)
 	if err == nil {
 		for _, section := range sections {
@@ -262,6 +289,9 @@ func (c *Configuration) PrintSection(fqn string) {
 
 // String returns the text representation of a parsed configuration file.
 func (c *Configuration) String() string {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
 	var parts []string
 	for _, fqn := range c.orderedSections {
 		sections, _ := c.Sections(fqn)
@@ -274,17 +304,26 @@ func (c *Configuration) String() string {
 
 // Exists returns true if the option exists
 func (s *Section) Exists(option string) (ok bool) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
 	_, ok = s.options[option]
 	return
 }
 
 // ValueOf returns the value of specified option.
 func (s *Section) ValueOf(option string) string {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	return s.options[option]
 }
 
 // SetValueFor sets the value for the specified option and returns the old value.
 func (s *Section) SetValueFor(option string, value string) string {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	var oldValue string
 	oldValue, s.options[option] = s.options[option], value
 
@@ -294,16 +333,23 @@ func (s *Section) SetValueFor(option string, value string) string {
 // Add adds a new option to the section. Adding and existing option will overwrite the old one.
 // The old value is returned
 func (s *Section) Add(option string, value string) (oldValue string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	var ok bool
 	if oldValue, ok = s.options[option]; !ok {
 		s.orderedOptions = append(s.orderedOptions, option)
 	}
 	s.options[option] = value
-	return
+
+	return oldValue
 }
 
 // Delete removes the specified option from the section and returns the deleted option's value.
 func (s *Section) Delete(option string) (value string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	value = s.options[option]
 	delete(s.options, option)
 	for i, opt := range s.orderedOptions {
@@ -311,7 +357,7 @@ func (s *Section) Delete(option string) (value string) {
 			s.orderedOptions = append(s.orderedOptions[:i], s.orderedOptions[i+1:]...)
 		}
 	}
-	return
+	return value
 }
 
 // Options returns a map of options for the section.
@@ -326,6 +372,9 @@ func (s *Section) OptionNames() []string {
 
 // String returns the text representation of a section with its options.
 func (s *Section) String() string {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
 	var parts []string
 	s_name := "[" + s.fqn + "]\n"
 	if s.fqn == "global" {
@@ -393,7 +442,6 @@ func parseOption(option string) (opt, value string) {
 }
 
 func (c *Configuration) addSection(fqn string) *Section {
-
 	section := &Section{fqn: fqn, options: make(map[string]string)}
 
 	var lst *list.List
