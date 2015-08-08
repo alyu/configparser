@@ -302,6 +302,14 @@ func (c *Configuration) String() string {
 	return strings.Join(parts, "")
 }
 
+// Name returns the name of the section
+func (s *Section) Name() string {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	return s.fqn
+}
+
 // Exists returns true if the option exists
 func (s *Section) Exists(option string) (ok bool) {
 	s.mutex.RLock()
