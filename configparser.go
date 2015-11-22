@@ -71,7 +71,7 @@ func NewConfiguration() *Configuration {
 	return newConfiguration("")
 }
 
-// ReadFile parses a specified configuration file and returns a Configuration instance.
+// Read parses a specified configuration file and returns a Configuration instance.
 func Read(filePath string) (*Configuration, error) {
 	filePath = path.Clean(filePath)
 
@@ -152,7 +152,7 @@ func (c *Configuration) NewSection(fqn string) *Section {
 	return c.addSection(fqn)
 }
 
-// Filepath returns the configuration file path.
+// FilePath returns the configuration file path.
 func (c *Configuration) FilePath() string {
 	return c.filePath
 }
@@ -175,7 +175,7 @@ func (c *Configuration) StringValue(section, option string) (value string, err e
 	return
 }
 
-// DeleteSection deletes the specified sections matched by a regex name and returns the deleted sections.
+// Delete deletes the specified sections matched by a regex name and returns the deleted sections.
 func (c *Configuration) Delete(regex string) (sections []*Section, err error) {
 	sections, err = c.Find(regex)
 	c.mutex.Lock()
@@ -384,11 +384,11 @@ func (s *Section) String() string {
 	defer s.mutex.RUnlock()
 
 	var parts []string
-	s_name := "[" + s.fqn + "]\n"
+	sName := "[" + s.fqn + "]\n"
 	if s.fqn == "global" {
-		s_name = ""
+		sName = ""
 	}
-	parts = append(parts, s_name)
+	parts = append(parts, sName)
 
 	for _, opt := range s.orderedOptions {
 		value := s.options[opt]
