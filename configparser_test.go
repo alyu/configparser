@@ -12,26 +12,26 @@ import (
 var gConfig *Configuration
 
 const (
-	CONFIG_FILEPATH         = "/tmp/configparser_test.ini"
-	CONFIG_FILEPATH_SHA     = "7594b11800abe3dbc4b82d3c9ccab8c6160d6c8e"
-	CONFIG_NEW_FILEPATH     = "/tmp/configparser_test_new.ini"
-	CONFIG_NEW_FILEPATH_SHA = "727325676a4e15ed451ba91a2ac9cc0f8db65606"
+	ConfigFilePath         = "/tmp/configparser_test.ini"
+	ConfigFilePathSHA     = "b0b06a0a48d952899fe68addd9f699d2043d045f"
+	ConfigNewFilePath     = "/tmp/configparser_test_new.ini"
+	ConfigNewFilePathSHA = "edc8d5361138edb5bc5be57e4eb88e737b61385e"
 
-	SECTION_NAME_1     = "MYSQLD DEFAULT"
-	SECTION_NAME_2     = "MONGODB"
-	SECTION_NAME_3     = "NDB_MGMD DEFAULT"
-	SECTION_NAME_REGEX = "webservers$"
+	SectionName1     = "MYSQLD DEFAULT"
+	SectionName2     = "MONGODB"
+	SectionName3     = "NDB_MGMD DEFAULT"
+	SectionNameRegex = "webservers$"
 
-	KEY_1 = "TotalSendBufferMemory"
-	KEY_2 = "DefaultOperationRedoProblemAction"
-	KEY_3 = "innodb_buffer_pool_size"
-	KEY_4 = "innodb_buffer_pool_instances"
+	Key1 = "TotalSendBufferMemory"
+	Key2 = "DefaultOperationRedoProblemAction"
+	Key3 = "innodb_buffer_pool_size"
+	Key4 = "innodb_buffer_pool_instances"
 
-	KEY_5 = "datadir"
-	KEY_6 = "smallfiles"
+	Key5 = "datadir"
+	Key6 = "smallfiles"
 
-	CONFIG_FILE_CONTENT = `wsrep_provider_options="gcache.size=128M; evs.keepalive_period=PT3S; evs.inactive_check_period=PT10S; evs.suspect_timeout=PT30S; evs.inactive_timeout=PT1M; evs.consensus_timeout=PT1M; evs.send_window=1024; evs.user_send_window=512;"
-
+	ConfigFileContent = `wsrep_provider_options="gcache.size=128M; evs.keepalive_period=PT3S; evs.inactive_check_period=PT10S; evs.suspect_timeout=PT30S; evs.inactive_timeout=PT1M; evs.consensus_timeout=PT1M; evs.send_window=1024; evs.user_send_window=512;"
+# global settings
 SendBufferMemory = 20M
 ReceiveBufferMemory = 20M
 
@@ -301,8 +301,8 @@ NodeId=222
 )
 
 func TestWriteTestConfigFile(t *testing.T) {
-	t.Log("Writing test config to" + CONFIG_FILEPATH)
-	f, err := os.Create(CONFIG_FILEPATH)
+	t.Log("Writing test config to" + ConfigFilePath)
+	f, err := os.Create(ConfigFilePath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -316,14 +316,14 @@ func TestWriteTestConfigFile(t *testing.T) {
 		err = w.Flush()
 	}()
 
-	w.WriteString(CONFIG_FILE_CONTENT)
+	w.WriteString(ConfigFileContent)
 }
 
 func TestReadConfigFile(t *testing.T) {
-	t.Log("Reading test config " + CONFIG_FILEPATH)
+	t.Log("Reading test config " + ConfigFilePath)
 
 	var err error
-	gConfig, err = Read(CONFIG_FILEPATH)
+	gConfig, err = Read(ConfigFilePath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -350,43 +350,43 @@ func TestGetSections(t *testing.T) {
 }
 
 func TestSetNewValue(t *testing.T) {
-	s, err := getConfig().Section(SECTION_NAME_1)
+	s, err := getConfig().Section(SectionName1)
 	if err != nil {
 		t.Error(err)
 	}
 
-	t.Logf("%s=%s\n", KEY_1, s.ValueOf(KEY_1))
-	oldValue := s.SetValueFor(KEY_1, "512M")
-	t.Logf("New: %s=%s\n", KEY_1, s.ValueOf(KEY_1))
-	if oldValue == s.ValueOf(KEY_1) {
-		t.Error("Unable to change value for key " + s.ValueOf(KEY_1))
+	t.Logf("%s=%s\n", Key1, s.ValueOf(Key1))
+	oldValue := s.SetValueFor(Key1, "512M")
+	t.Logf("New: %s=%s\n", Key1, s.ValueOf(Key1))
+	if oldValue == s.ValueOf(Key1) {
+		t.Error("Unable to change value for key " + s.ValueOf(Key1))
 	}
 }
 
 func TestAddOption(t *testing.T) {
-	s, err := getConfig().Section(SECTION_NAME_1)
+	s, err := getConfig().Section(SectionName1)
 	if err != nil {
 		t.Error(err)
 	}
 
-	testAddOption(s, KEY_3, "128G", t)
-	testAddOption(s, KEY_4, "16", t)
+	testAddOption(s, Key3, "128G", t)
+	testAddOption(s, Key4, "16", t)
 
-	testAddOption(s, KEY_3, "64G", t)
-	testAddOption(s, KEY_4, "8", t)
+	testAddOption(s, Key3, "64G", t)
+	testAddOption(s, Key4, "8", t)
 }
 
 func TestDeleteOption(t *testing.T) {
-	s, err := getConfig().Section(SECTION_NAME_1)
+	s, err := getConfig().Section(SectionName1)
 	if err != nil {
 		t.Error(err)
 	}
 
-	testDeleteOption(s, KEY_2, t)
+	testDeleteOption(s, Key2, t)
 }
 
 func TestNotExistsOption(t *testing.T) {
-	s, err := getConfig().Section(SECTION_NAME_1)
+	s, err := getConfig().Section(SectionName1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -397,22 +397,22 @@ func TestNotExistsOption(t *testing.T) {
 }
 
 func TestNewSection(t *testing.T) {
-	s := getConfig().NewSection(SECTION_NAME_2)
-	s.Add(KEY_5, "/var/lib/mongodb")
-	s.Add(KEY_6, "true")
+	s := getConfig().NewSection(SectionName2)
+	s.Add(Key5, "/var/lib/mongodb")
+	s.Add(Key6, "true")
 }
 
 func TestGetNewSections(t *testing.T) {
-	s, err := getConfig().Section(SECTION_NAME_2)
+	s, err := getConfig().Section(SectionName2)
 	if err != nil {
 		t.Error(err)
 	}
-	if !s.Exists(KEY_5) {
-		t.Error(KEY_5 + " does not exists")
+	if !s.Exists(Key5) {
+		t.Error(Key5 + " does not exists")
 	}
 
-	if !s.Exists(KEY_6) {
-		t.Error(KEY_6 + " does not exists")
+	if !s.Exists(Key6) {
+		t.Error(Key6 + " does not exists")
 	}
 
 	t.Log(s)
@@ -420,7 +420,7 @@ func TestGetNewSections(t *testing.T) {
 
 func TestDeleteSection(t *testing.T) {
 	c := getConfig()
-	sections, err := c.Delete(SECTION_NAME_3)
+	sections, err := c.Delete(SectionName3)
 	if err != nil {
 		t.Error(err)
 	}
@@ -431,7 +431,7 @@ func TestDeleteSection(t *testing.T) {
 
 func TestFindSection(t *testing.T) {
 	c := getConfig()
-	sections, err := c.Find(SECTION_NAME_REGEX)
+	sections, err := c.Find(SectionNameRegex)
 	if err != nil {
 		t.Error(err)
 	}
@@ -443,21 +443,21 @@ func TestFindSection(t *testing.T) {
 func TestSaveNewConfigFile(t *testing.T) {
 	c := getConfig()
 
-	err := Save(c, CONFIG_NEW_FILEPATH)
+	err := Save(c, ConfigNewFilePath)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestSHA(t *testing.T) {
-	out, err := exec.Command("shasum", CONFIG_NEW_FILEPATH).Output()
+	out, err := exec.Command("shasum", ConfigNewFilePath).Output()
 	if err != nil {
 		t.Fatal(err)
 	}
 	sha := strings.Split(string(out), " ")
-	t.Logf("%v=%v", sha[0], CONFIG_NEW_FILEPATH_SHA)
-	if sha[0] != CONFIG_NEW_FILEPATH_SHA {
-		t.Error(CONFIG_NEW_FILEPATH + " shasum doees not match!")
+	t.Logf("%v=%v", sha[0], ConfigNewFilePathSHA)
+	if sha[0] != ConfigNewFilePathSHA {
+		t.Error(ConfigNewFilePath + " shasum doees not match!")
 	}
 }
 
