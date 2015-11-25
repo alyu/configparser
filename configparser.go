@@ -121,7 +121,6 @@ func Save(c *Configuration, filePath string) (err error) {
 
 	for _, v := range s {
 		w.WriteString(v.String())
-		w.WriteString("\n")
 	}
 
 	return err
