@@ -15,7 +15,7 @@ const (
 	ConfigFilePath         = "/tmp/configparser_test.ini"
 	ConfigFilePathSHA     = "b0b06a0a48d952899fe68addd9f699d2043d045f"
 	ConfigNewFilePath     = "/tmp/configparser_test_new.ini"
-	ConfigNewFilePathSHA = "edc8d5361138edb5bc5be57e4eb88e737b61385e"
+	ConfigNewFilePathSHA = "a1a3f9acbebed990cbbb573d0f2b6fa9aa8ae5f0"
 
 	SectionName1     = "MYSQLD DEFAULT"
 	SectionName2     = "MONGODB"
