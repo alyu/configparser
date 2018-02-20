@@ -449,6 +449,25 @@ func TestSaveNewConfigFile(t *testing.T) {
 	}
 }
 
+func TestSectionString(t *testing.T) {
+	Delimiter = " = "
+	s, err := getConfig().Section(SectionName2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	expected := `[MONGODB]
+datadir = /var/lib/mongodb
+smallfiles = true
+`
+	str := s.String()
+	t.Log(expected)
+	t.Log(str)
+	if str != expected {
+		t.Error("section string doesn't match expected string")
+	}
+}
+
 func TestSHA(t *testing.T) {
 	out, err := exec.Command("shasum", ConfigNewFilePath).Output()
 	if err != nil {
