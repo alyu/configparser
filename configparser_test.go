@@ -424,6 +424,47 @@ func TestDeleteSection(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
+	// Verify that the section was deleted.
+	var section []*Section
+	section, err = c.Find(SectionName3)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(section) != 0 {
+		t.Error("Section not deleted")
+	}
+
+	for _, s := range sections {
+		t.Log(s)
+	}
+}
+
+// Test removal of the final two sections in the configuration file.
+func TestDeleteFinalSections(t *testing.T) {
+	c := getConfig()
+
+	// First, append two sections to the configuration.
+	sectionName := "FinalSection"
+	c.NewSection(sectionName)
+	c.NewSection(sectionName + "2")
+
+	// Now remove the sections using a regular expression.
+	sections, err := c.Delete(sectionName)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Verify that the sections were deleted.
+	var section []*Section
+	section, err = c.Find(sectionName)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(section) != 0 {
+		t.Error("Section not deleted")
+	}
+
 	for _, s := range sections {
 		t.Log(s)
 	}

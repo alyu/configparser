@@ -169,8 +169,8 @@ func (c *Configuration) Delete(regex string) (sections []*Section, err error) {
 		}
 		// remove also from ordered list
 		var matched bool
-		for i, name := range c.orderedSections {
-			if matched, err = regexp.MatchString(regex, name); matched {
+		for i := len(c.orderedSections) - 1; i >= 0; i-- {
+			if matched, err = regexp.MatchString(regex, c.orderedSections[i]); matched {
 				c.orderedSections = append(c.orderedSections[:i], c.orderedSections[i+1:]...)
 			} else {
 				if err != nil {
