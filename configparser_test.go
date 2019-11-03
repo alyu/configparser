@@ -12,10 +12,10 @@ import (
 var gConfig *Configuration
 
 const (
-	ConfigFilePath         = "/tmp/configparser_test.ini"
-	ConfigFilePathSHA     = "b0b06a0a48d952899fe68addd9f699d2043d045f"
-	ConfigNewFilePath     = "/tmp/configparser_test_new.ini"
-	ConfigNewFilePathSHA = "a1a3f9acbebed990cbbb573d0f2b6fa9aa8ae5f0"
+	ConfigFilePath       = "/tmp/configparser_test.ini"
+	ConfigFilePathSHA    = "b28cf57c4f5a261d2e6810466c0f157392fe11d5"
+	ConfigNewFilePath    = "/tmp/configparser_test_new.ini"
+	ConfigNewFilePathSHA = "f6e64298eb5c4f0dbd34c720158fdf311e87ccfc"
 
 	SectionName1     = "MYSQLD DEFAULT"
 	SectionName2     = "MONGODB"
@@ -48,6 +48,9 @@ dc2.standby.local
 [dc2.webservers]
 30.30.30.30
 40.40.40.40
+loginURL="https://station.watchdog.com/home"
+statsURL="https://station.watchdog.com/stats?cpu=sec"
+statsURL2=https://station.watchdog.com/stats?cpu=user&mem=free
 
 [TCP DEFAULT]
 #SendBufferMemory=20M
@@ -478,6 +481,42 @@ func TestFindSection(t *testing.T) {
 	}
 	for _, s := range sections {
 		t.Log(s)
+	}
+}
+
+func TestGetPlainURL(t *testing.T) {
+	s, err := getConfig().Section("dc2.webservers")
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log("loginuRL=" + s.ValueOf("loginURL"))
+	if "\"https://station.watchdog.com/home\"" != s.ValueOf("loginURL") {
+		t.Fatal("loginURL does not match!")
+	}
+}
+
+func TestGetParamURL(t *testing.T) {
+	s, err := getConfig().Section("dc2.webservers")
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log("statsURL=" + s.ValueOf("statsURL"))
+	if "\"https://station.watchdog.com/stats?cpu=sec\"" != s.ValueOf("statsURL") {
+		t.Fatal("statsURL does not match!")
+	}
+}
+
+func TestGetParamURL2(t *testing.T) {
+	s, err := getConfig().Section("dc2.webservers")
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log("statsURL2=" + s.ValueOf("statsURL2"))
+	if "https://station.watchdog.com/stats?cpu=user&mem=free" != s.ValueOf("statsURL2") {
+		t.Fatal("statsURL2 does not match!")
 	}
 }
 

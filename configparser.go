@@ -66,19 +66,19 @@ func Read(filePath string) (*Configuration, error) {
 
 	scanner := bufio.NewScanner(bufio.NewReader(file))
 	for scanner.Scan() {
+		// TODO: maybe trim spaces here
 		line := scanner.Text()
-		if !(strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";")) && len(line) > 0 {
-			if isSection(line) {
-				fqn := strings.Trim(line, " []")
-				activeSection = config.addSection(fqn)
-				continue
-			} else {
-				addOption(activeSection, line)
-			}
-		} else {
-			// save comments
-			addOption(activeSection, line)
-		}
+		if (len(line) < 0) {
+			continue
+		}			
+
+		if isSection(line) {
+			fqn := strings.Trim(line, " []")
+			activeSection = config.addSection(fqn)
+			continue
+		} 
+		// save options and comments
+		addOption(activeSection, line)
 	}
 
 	if err := scanner.Err(); err != nil {
