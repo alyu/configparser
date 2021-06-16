@@ -33,6 +33,7 @@ var Delimiter = "="
 // Configuration represents a configuration file with its sections and options.
 type Configuration struct {
 	filePath        string                // configuration file
+	global          *Section              // for settings that don't go into a named section
 	sections        map[string]*list.List // fully qualified section name as key
 	orderedSections []string              // track the order of section names as they are parsed
 	mutex           sync.RWMutex
@@ -41,6 +42,7 @@ type Configuration struct {
 // A Section in a configuration.
 type Section struct {
 	fqn            string
+	isGlobal       bool
 	options        map[string]string
 	orderedOptions []string // track the order of the options as they are parsed
 	mutex          sync.RWMutex
@@ -62,21 +64,21 @@ func Read(filePath string) (*Configuration, error) {
 	defer file.Close()
 
 	config := newConfiguration(filePath)
-	activeSection := config.addSection("global")
+	activeSection := config.global
 
 	scanner := bufio.NewScanner(bufio.NewReader(file))
 	for scanner.Scan() {
 		// TODO: maybe trim spaces here
 		line := scanner.Text()
-		if (len(line) < 0) {
+		if len(line) < 0 {
 			continue
-		}			
+		}
 
 		if isSection(line) {
 			fqn := strings.Trim(line, " []")
 			activeSection = config.addSection(fqn)
 			continue
-		} 
+		}
 		// save options and comments
 		addOption(activeSection, line)
 	}
@@ -114,7 +116,7 @@ func Save(c *Configuration, filePath string) (err error) {
 	}()
 	c.mutex.Unlock()
 
-	s, err := c.AllSections()
+	global, sections, err := c.AllSections()
 	if err != nil {
 		return err
 	}
@@ -122,14 +124,15 @@ func Save(c *Configuration, filePath string) (err error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	for _, v := range s {
+	w.WriteString(global.String())
+	for _, v := range sections {
 		w.WriteString(v.String())
 	}
 
 	return err
 }
 
-// NewSection creates and adds a new Section with the specified name.
+// NewSection creates and adds a new non-global Section with the specified name.
 func (c *Configuration) NewSection(fqn string) *Section {
 	return c.addSection(fqn)
 }
@@ -147,7 +150,7 @@ func (c *Configuration) SetFilePath(filePath string) {
 	c.filePath = filePath
 }
 
-// StringValue returns the string value for the specified section and option.
+// StringValue returns the string value for the specified non-global section and option.
 func (c *Configuration) StringValue(section, option string) (value string, err error) {
 	s, err := c.Section(section)
 	if err != nil {
@@ -157,7 +160,7 @@ func (c *Configuration) StringValue(section, option string) (value string, err e
 	return
 }
 
-// Delete deletes the specified sections matched by a regex name and returns the deleted sections.
+// Delete deletes the specified non-global sections matched by a regex name and returns the deleted sections.
 func (c *Configuration) Delete(regex string) (sections []*Section, err error) {
 	sections, err = c.Find(regex)
 	c.mutex.Lock()
@@ -182,7 +185,12 @@ func (c *Configuration) Delete(regex string) (sections []*Section, err error) {
 	return sections, err
 }
 
-// Section returns the first section matching the fully qualified section name.
+// GlobalSection returns the global section
+func (c *Configuration) GlobalSection() *Section {
+	return c.global
+}
+
+// Section returns the first non-global section matching the fully qualified section name.
 func (c *Configuration) Section(fqn string) (*Section, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -196,12 +204,13 @@ func (c *Configuration) Section(fqn string) (*Section, error) {
 	return nil, errors.New("Unable to find " + fqn)
 }
 
-// AllSections returns a slice of all sections available.
-func (c *Configuration) AllSections() ([]*Section, error) {
-	return c.Sections("")
+// AllSections returns the global, as well as a slice of all non-global sections.
+func (c *Configuration) AllSections() (*Section, []*Section, error) {
+	s, err := c.Sections("")
+	return c.global, s, err
 }
 
-// Sections returns a slice of Sections matching the fully qualified section name.
+// Sections returns a slice of non-global Sections matching the fully qualified section name.
 func (c *Configuration) Sections(fqn string) ([]*Section, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -233,7 +242,7 @@ func (c *Configuration) Sections(fqn string) ([]*Section, error) {
 	return sections, nil
 }
 
-// Find returns a slice of Sections matching the regexp against the section name.
+// Find returns a slice of non-global Sections matching the regexp against the section name.
 func (c *Configuration) Find(regex string) ([]*Section, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -254,7 +263,7 @@ func (c *Configuration) Find(regex string) ([]*Section, error) {
 	return sections, nil
 }
 
-// PrintSection prints a text representation of all sections matching the fully qualified section name.
+// PrintSection prints a text representation of all non-global sections matching the fully qualified section name.
 func (c *Configuration) PrintSection(fqn string) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -275,6 +284,7 @@ func (c *Configuration) String() string {
 	defer c.mutex.RUnlock()
 
 	var parts []string
+	parts = append(parts, c.global.String())
 	for _, fqn := range c.orderedSections {
 		sections, _ := c.Sections(fqn)
 		for _, section := range sections {
@@ -366,11 +376,10 @@ func (s *Section) String() string {
 	defer s.mutex.RUnlock()
 
 	var parts []string
-	sName := "[" + s.fqn + "]\n"
-	if s.fqn == "global" {
-		sName = ""
+
+	if !s.isGlobal {
+		parts = append(parts, "["+s.fqn+"]\n")
 	}
-	parts = append(parts, sName)
 
 	for _, opt := range s.orderedOptions {
 		value := s.options[opt]
@@ -388,10 +397,20 @@ func (s *Section) String() string {
 // Private
 //
 
+// newSection creates a new, blank section
+func newSection(fqn string, isGlobal bool) *Section {
+	return &Section{
+		fqn:      fqn,
+		isGlobal: isGlobal,
+		options:  make(map[string]string),
+	}
+}
+
 // newConfiguration creates a new Configuration instance.
 func newConfiguration(filePath string) *Configuration {
 	return &Configuration{
 		filePath: filePath,
+		global:   newSection("", true),
 		sections: make(map[string]*list.List),
 	}
 }
@@ -431,8 +450,9 @@ func parseOption(option string) (opt, value string) {
 	return
 }
 
+// addSection adds a new non-global section with the given name
 func (c *Configuration) addSection(fqn string) *Section {
-	section := &Section{fqn: fqn, options: make(map[string]string)}
+	section := newSection(fqn, false)
 
 	var lst *list.List
 	if lst = c.sections[fqn]; lst == nil {
